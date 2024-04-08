@@ -246,7 +246,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(net.parameters(), lr=config.learning_rate)
     loss_criterion = Loss.MSELoss()
     os.makedirs(config.models_dir, exist_ok=True)
-    json_path = os.path.join(config.output_dir, 'hyperparameter.json')
+    json_path = os.path.join(config.models_dir, 'hyperparameter.json')
     with open(json_path,'w') as f:
         f.write(json.dumps(vars(config), ensure_ascii=False, indent=4, separators=(',', ':')))
 
