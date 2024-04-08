@@ -1,25 +1,20 @@
 from cmath import inf
 import shutil
 import os
-
+import torch
 import torch.nn.modules.loss as Loss
 from torch import optim
 import numpy as np
-
-from complex_net.cmplx_unet import CUNet
-from complex_net.cmplx_blocks import batch_norm
+from torch.autograd import Variable
+from net.cmplx_unet import CUNet
+from net.cmplx_blocks import batch_norm
 from utils.dataset import get_dataloaders
 from utils.loss import SSIM
 from configs import config
 import logging
 from complex_layers.radial_bn import RadialNorm
-
-
-logging.basicConfig(
-    format='%(asctime)s - %(message)s',
-    datefmt='%d-%b-%y %H:%M:%S',
-    level=logging.INFO
-)
+import json
+import random
 
 
 def set_seeds(seed):
@@ -30,9 +25,12 @@ def set_seeds(seed):
     seed : int
         The seed to set.
     """
+    random.seed(seed)
+    np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 def get_device():
@@ -237,14 +235,19 @@ def adjust_learning_rate(epoch, optimizer):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename='./cmplxnet.log',
+                        format='%(asctime)s - %(message)s',
+                        datefmt='%d-%b-%y %H:%M:%S',
+                        level=logging.INFO)
     set_seeds(222)
     tr_dataloader, val_dataloader = get_dataloaders()
-    net = CUNet(config.in_channels, config.out_channels)
-    if torch.cuda.is_available():
-        net = torch.nn.DataParallel(net).cuda()
+    net = CUNet(config.in_channels, config.out_channels).to(get_device())
 
     optimizer = optim.Adam(net.parameters(), lr=config.learning_rate)
     loss_criterion = Loss.MSELoss()
     os.makedirs(config.models_dir, exist_ok=True)
+    json_path = os.path.join(config.output_dir, 'hyperparameter.json')
+    with open(json_path,'w') as f:
+        f.write(json.dumps(vars(config), ensure_ascii=False, indent=4, separators=(',', ':')))
 
     train(net, optimizer, loss_criterion, tr_dataloader, val_dataloader)
