@@ -1,6 +1,7 @@
 
 PyTorch implementation of complex convolutional network for Magnetic Reasonance Imaging (MRI) reconstruction 
 
+Please set all your parameters in "configs.py" and run `nohup python -u main.py >> output.log &` on your server.
 
 If you find this code useful, please cite the following paper:
 

@@ -34,7 +34,7 @@ def batch_norm(in_channels=None, **kwargs):
         2: nn.BatchNorm2d,
         3: nn.BatchNorm3d
     }[config.spatial_dimentions]
-    return bn(in_channels, t=config.bn_t, **kwargs)
+    return bn(in_channels, **kwargs)
 
 
 class DoubleConv(nn.Module):
@@ -76,6 +76,7 @@ class InConv(nn.Module):
         self.conv = DoubleConv(in_ch, out_ch)
 
     def forward(self, x):
+        x = torch.permute(x, (1, 0, 4, 2, 3))[0]
         x = self.conv(x)
         return x
 
@@ -152,4 +153,5 @@ class OutConv(nn.Module):
 
     def forward(self, x):
         x = self.conv(x)
+        x = torch.unsqueeze(torch.permute(x, (0, 2, 3, 1)), 1)
         return x

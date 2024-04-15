@@ -7,14 +7,16 @@ from torch import optim
 import numpy as np
 from torch.autograd import Variable
 from net.cmplx_unet import CUNet
+from net.real_unet import RealUNet
 from net.cmplx_blocks import batch_norm
 from utils.dataset import get_dataloaders
 from utils.loss import SSIM
 from configs import config
-import logging
-from complex_layers.radial_bn import RadialNorm
 import json
 import random
+from skimage.io import imread, imsave
+from skimage.metrics import structural_similarity as ssim
+
 
 
 def set_seeds(seed):
@@ -44,7 +46,7 @@ def get_device():
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def train_epoch(net, optimizer, loss_criterion, tr_dataloader, epoch):
+def train_epoch(net, optimizer, loss_criterion, tr_dataloader, epoch, device):
     """Train for one epoch of the data
 
     Parameters
@@ -71,17 +73,16 @@ def train_epoch(net, optimizer, loss_criterion, tr_dataloader, epoch):
     """
     avg_loss = 0.0
     net.train()
-    device = get_device()
-    radial_normalizer = batch_norm(
-        in_channels =config.in_channels,
-    )
-    for itt, (input, target) in enumerate(tr_dataloader):
-        X = Variable(torch.FloatTensor(input.float())).to(device)
-        y = Variable(torch.FloatTensor(target.float())).to(device)
+    # radial_normalizer = batch_norm(
+    #     in_channels = 1,
+    # )
+    for itt, (input, target, name) in enumerate(tr_dataloader):
+        X = input.to(device)
+        y = target.to(device)
 
-        if config.normalize_input:
-            X = radial_normalizer(X)
-            y = radial_normalizer(y)
+        # if config.normalize_input:
+        #     X = radial_normalizer(X)
+        #     y = radial_normalizer(y)
 
         y_pred = net(X)
 
@@ -92,14 +93,15 @@ def train_epoch(net, optimizer, loss_criterion, tr_dataloader, epoch):
 
         avg_loss += loss.detach().item() / len(tr_dataloader)
 
-        logging.info('Epoch: {0} - Itter: {1}/{2} - loss: {3:.6f}'.format(
-            epoch, itt, len(tr_dataloader), loss.detach().item())
-        )
+        if itt % 20 == 0:
+            print('Epoch: {0} - Iter: {1}/{2} - loss: {3:.6f}'.format(
+                epoch, itt, len(tr_dataloader), loss.detach().item())
+            )
 
     return avg_loss, net, optimizer
 
 
-def validate(net, loss_criterion, val_dataloader, epoch):
+def validate(net, loss_criterion, val_dataloader, epoch, device, is_save=False):
     """Validate the model on the validation set
 
     Parameters
@@ -123,35 +125,43 @@ def validate(net, loss_criterion, val_dataloader, epoch):
     avg_loss = 0.0
     avg_ssim = 0.0
     ssim_criterion = SSIM()
-    device = get_device()
-    radial_normalizer = batch_norm(
-        in_channels =config.in_channels,
-    )
+    # radial_normalizer = batch_norm(
+    #     in_channels = 1,
+    # )
     mag = lambda x: (x[..., 0] ** 2 + x[..., 1] ** 2) ** 0.5
     with torch.no_grad():
-        for itt, (input, target) in enumerate(val_dataloader):
-            X = Variable(torch.FloatTensor(input.float())).to(device)
-            y = Variable(torch.FloatTensor(target.float())).to(device)
+        for itt, (input, target, name) in enumerate(val_dataloader):
+            X = input.to(device)
+            y = target.to(device)
 
-            if config.normalize_input:
-                X = radial_normalizer(X)
-                y = radial_normalizer(y)
+            # if config.normalize_input:
+            #     X = radial_normalizer(X)
+            #     y = radial_normalizer(y)
 
             y_pred = net(X)
-
             loss = loss_criterion(y_pred, y)
             ssim = ssim_criterion(mag(y_pred), mag(y))
 
             avg_loss += loss.detach().item() / len(val_dataloader)
             avg_ssim += ssim.detach().item() / len(val_dataloader)
             
-            logging.info('Epoch: {0} - Itter: {1}/{2} - loss: {3:.6f} - SSIM: {4:.6f}'.format(
-                epoch, itt, len(val_dataloader), loss.detach().item(), ssim.detach().item())
-            )
+            if itt % 20 == 0:
+                print('Epoch: {0} - Iter: {1}/{2} - loss: {3:.6f} - SSIM: {4:.6f}'.format(
+                    epoch, itt, len(val_dataloader), loss.detach().item(), ssim.detach().item())
+                )
+
+            if is_save:
+                if not os.path.isdir(config.models_dir + '/visualize'):
+                    os.makedirs(config.models_dir + '/visualize')   
+                for i, filename in enumerate(name):
+                    out_to_save = mag(y_pred).detach().cpu().numpy()[i, 0, :, :]
+                    out_to_save = ((out_to_save - out_to_save.min()) / (out_to_save.max() - out_to_save.min()) * 255).astype(np.uint8)
+                    filename = filename.split('/')[-1][:-4]
+                    imsave(config.models_dir + '/visualize/' + filename + '.png', out_to_save)
     return avg_loss, avg_ssim
 
 
-def train(net, optimizer, loss_criterion, tr_dataloader, val_dataloader):
+def train(net, optimizer, loss_criterion, tr_dataloader, val_dataloader, device):
     """Train the network
 
     Parameters
@@ -167,36 +177,40 @@ def train(net, optimizer, loss_criterion, tr_dataloader, val_dataloader):
     val_dataloader : torch.utils.data.DataLoader
         The validation data loader.
     """
-    best_loss = inf
+    best_ssim = -1
     for epoch in range(config.num_epochs):
-        logging.info(f'Training epoch {epoch}/{config.num_epochs}...')
+        print(f'Training epoch {epoch}/{config.num_epochs}...')
 
         optimizer = adjust_learning_rate(epoch, optimizer)
 
         # Training
         avg_tr_loss, net, optimizer = train_epoch(
-            net, optimizer, loss_criterion, tr_dataloader, epoch
+            net, optimizer, loss_criterion, tr_dataloader, epoch, device
         )
-        logging.info(f'Epoch {epoch} - Avg. training loss: {avg_tr_loss:.3f}')
+        print(f'Epoch {epoch} - Avg. training loss: {avg_tr_loss:.3f}')
 
         # Validation
-        avg_vld_loss, avg_vld_ssim = validate(net, loss_criterion, val_dataloader, epoch)
-        logging.info(f'Epoch {epoch} - Avg. validation loss: {avg_tr_loss:.3f}, SSIM: {avg_vld_ssim:.3f}')
-
-        save_checkpoint(
-            {
-                'epoch': epoch,
-                'arch': 'complexnet',
-                'state_dict': net.state_dict(),
-                'optimizer': optimizer.state_dict(),
-            },
-            is_best = avg_vld_loss < best_loss,
-            filename = config.models_dir + 'checkpoint.pth'
-        )
-        logging.info('Model Saved!')
+        avg_vld_loss, avg_vld_ssim = validate(net, loss_criterion, val_dataloader, epoch, device)
+        print(f'Epoch {epoch} - Avg. validation loss: {avg_vld_loss:.3f}, SSIM: {avg_vld_ssim:.3f}')
 
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth'):
+        if (epoch % config.num_epochs_per_saving == 0 or epoch == config.num_epochs - 1) and epoch > 0:
+            torch.save({'epoch': epoch, 'state_dict': net.state_dict(),
+                        'optimizer': optimizer.state_dict(),},
+                os.path.join(config.models_dir, 'checkpoint_epoch_{}.pth'.format(epoch))
+            )
+            print('Model Saved!')
+        if avg_vld_ssim > best_ssim:
+            best_ssim = avg_vld_ssim
+            print("Best model!")
+            torch.save({'epoch': epoch, 'state_dict': net.state_dict(),
+                        'optimizer': optimizer.state_dict(),},
+                os.path.join(config.models_dir, 'best_model.pth')
+            )
+            print('Model Saved!')
+
+
+def save_checkpoint(state, filename='checkpoint.pth'):
     """Save a checkpoint
 
     Parameters
@@ -209,8 +223,6 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth'):
         The filename to save the checkpoint to.
     """
     torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, 'model_best.pth')
 
 
 def adjust_learning_rate(epoch, optimizer):
@@ -235,19 +247,24 @@ def adjust_learning_rate(epoch, optimizer):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='./cmplxnet.log',
-                        format='%(asctime)s - %(message)s',
-                        datefmt='%d-%b-%y %H:%M:%S',
-                        level=logging.INFO)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     set_seeds(222)
-    tr_dataloader, val_dataloader = get_dataloaders()
-    net = CUNet(config.in_channels, config.out_channels).to(get_device())
-
-    optimizer = optim.Adam(net.parameters(), lr=config.learning_rate)
-    loss_criterion = Loss.MSELoss()
     os.makedirs(config.models_dir, exist_ok=True)
     json_path = os.path.join(config.models_dir, 'hyperparameter.json')
     with open(json_path,'w') as f:
         f.write(json.dumps(vars(config), ensure_ascii=False, indent=4, separators=(',', ':')))
 
-    train(net, optimizer, loss_criterion, tr_dataloader, val_dataloader)
+    train_dataloader, val_dataloader = get_dataloaders()
+    if config.net == "CUNet":
+        net = CUNet().to(device)
+    if config.net == "RealUNet":
+        net = RealUNet().to(device)
+
+    optimizer = optim.Adam(net.parameters(), lr=config.learning_rate)
+    loss_criterion = Loss.MSELoss()
+
+    train(net, optimizer, loss_criterion, train_dataloader, val_dataloader, device)
+    print("-----Final Test-----")
+    net.load_state_dict(torch.load(os.path.join(config.models_dir, 'best_model.pth'), map_location='cpu')["state_dict"])
+    avg_vld_loss, avg_vld_ssim = validate(net, loss_criterion, val_dataloader, config.num_epochs, device, is_save=True)
+    print(f'Epoch {config.num_epochs} - Avg. validation loss: {avg_vld_loss:.3f}, SSIM: {avg_vld_ssim:.3f}')

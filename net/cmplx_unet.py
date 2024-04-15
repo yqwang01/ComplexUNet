@@ -4,16 +4,16 @@ from configs import config
 
 
 class CUNet(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self,):
         super(CUNet, self).__init__()
-        self.inc = unet_cmplx.InConv(in_channels, 64)
+        self.inc = unet_cmplx.InConv(1, 64)
         self.down1 = unet_cmplx.Down(64, 128)
         self.down2 = unet_cmplx.Down(128, 256)
         self.bottleneck = unet_cmplx.BottleNeck(256, 256, False)
         self.up2 = unet_cmplx.Up(256, 128)
         self.up3 = unet_cmplx.Up(128, 64)
         self.up4 = unet_cmplx.Up(64, 64)
-        self.ouc = unet_cmplx.OutConv(64, out_channels)
+        self.ouc = unet_cmplx.OutConv(64, 1)
 
     def forward(self, x):
         x0 = x
