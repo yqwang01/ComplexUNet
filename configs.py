@@ -14,10 +14,10 @@ class Config(object):
         self.cut_ratio_2 = 1
 
         # Training configs
-        self.learning_rate = 0.01
-        self.models_dir = '/home/ali/ext2/yqwang/Coursework/BME548/Project/Snapshots/041516_RealUNet'
-        self.num_epochs = 1
-        self.num_epochs_per_saving = 5
+        self.learning_rate = 0.001
+        self.models_dir = '/home/ali/ext2/yqwang/Coursework/BME548/Project/Snapshots/042917_RealUNet'
+        self.num_epochs = 50
+        self.num_epochs_per_saving = 10
         self.normalize_input = False
 
         # Model configs

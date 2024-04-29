@@ -151,13 +151,18 @@ def validate(net, loss_criterion, val_dataloader, epoch, device, is_save=False):
                 )
 
             if is_save:
-                if not os.path.isdir(config.models_dir + '/visualize'):
-                    os.makedirs(config.models_dir + '/visualize')   
+                if not os.path.isdir(config.models_dir + '/input'):
+                    os.makedirs(config.models_dir + '/input')   
+                    os.makedirs(config.models_dir + '/output')   
                 for i, filename in enumerate(name):
+                    filename = filename.split('/')[-1][:-4]
                     out_to_save = mag(y_pred).detach().cpu().numpy()[i, 0, :, :]
                     out_to_save = ((out_to_save - out_to_save.min()) / (out_to_save.max() - out_to_save.min()) * 255).astype(np.uint8)
-                    filename = filename.split('/')[-1][:-4]
-                    imsave(config.models_dir + '/visualize/' + filename + '.png', out_to_save)
+                    imsave(config.models_dir + '/output/' + filename + '.png', out_to_save)
+                    out_to_save = mag(X).detach().cpu().numpy()[i, 0, :, :]
+                    out_to_save = ((out_to_save - out_to_save.min()) / (out_to_save.max() - out_to_save.min()) * 255).astype(np.uint8)
+                    imsave(config.models_dir + '/input/' + filename + '.png', out_to_save)
+
     return avg_loss, avg_ssim
 
 

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.nn.parameter import Parameter
 from utils.polar_transforms import (
     convert_polar_to_cylindrical,

@@ -129,7 +129,7 @@ class DenoisingDataset(Dataset):
         # image = interpolate(image, size=self.img_size, mode='bilinear', align_corners=True)
         image_crop = center_crop(image, shape=self.img_size)
         image_crop = torch.unsqueeze(image_crop / torch.max(fastmri.complex_abs(image_crop)), 0)
-        noise = torch.randn_like(image_crop) * 0.01 + 0
+        noise = torch.randn_like(image_crop) * 0.1 + 0
         x = image_crop + noise
         y = image_crop
 
