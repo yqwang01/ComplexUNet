@@ -230,22 +230,29 @@ def save_checkpoint(state, filename='checkpoint.pth'):
     torch.save(state, filename)
 
 
-def adjust_learning_rate(epoch, optimizer):
-    """Sets the learning rate to the initial LR decayed by 10 every 20 epochs
+# def adjust_learning_rate(epoch, optimizer):
+#     """Sets the learning rate to the initial LR decayed by 10 every 20 epochs
     
-    Parameters
-    ----------
-    epoch : int
-        The epoch number.
-    optimizer : torch.optim.Optimizer
-        The optimizer.
+#     Parameters
+#     ----------
+#     epoch : int
+#         The epoch number.
+#     optimizer : torch.optim.Optimizer
+#         The optimizer.
 
-    Returns
-    -------
-    optimizer : torch.optim.Optimizer
-        The optimizer.
-    """
-    lr = config.learning_rate * (0.1 ** (epoch // 20))
+#     Returns
+#     -------
+#     optimizer : torch.optim.Optimizer
+#         The optimizer.
+#     """
+#     lr = config.learning_rate * (0.1 ** (epoch // 20))
+#     for param_group in optimizer.param_groups:
+#         param_group['lr'] = lr
+#     return optimizer
+
+
+def adjust_learning_rate(epoch, optimizer):
+    lr = config.learning_rate * ((1 - float(epoch) / config.num_epochs) ** 0.9)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     return optimizer

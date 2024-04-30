@@ -47,6 +47,8 @@ def convert_cylindrical_to_polar(
     """
     mag = (real ** 2 + imag ** 2) ** (0.5)
     phase = torch.atan2(imag, real)
+    phase[torch.logical_and(real < 0, imag < 0)] = phase[torch.logical_and(real < 0, imag < 0)] - torch.pi
+    phase[torch.logical_and(real < 0, imag > 0)] = phase[torch.logical_and(real < 0, imag > 0)] + torch.pi
     phase[phase.ne(phase)] = 0.0  # remove NANs if any
     return mag, phase
 

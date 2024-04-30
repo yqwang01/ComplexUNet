@@ -5,6 +5,7 @@ from complex_layers.cmplx_conv import ComplexConv1d, ComplexConv2d, ComplexConv3
 from complex_layers.cmplx_activation import CReLU, ModReLU, ZReLU
 from complex_layers.cmplx_upsample import ComplexUpsample
 from complex_layers.radial_bn import RadialBatchNorm1d, RadialBatchNorm2d, RadialBatchNorm3d
+from complex_layers.radial_bn import CNorm1d, CNorm2d, CNorm3d
 from complex_layers.cmplx_dropout import ComplexDropout
 from configs import config
 
@@ -26,21 +27,28 @@ def complex_conv(in_ch, out_ch, **kwargs):
 
 
 def activation(in_channels=None, **kwargs):
-    if config.activation == 'modReLU':
+    if config.activation == 'ModReLU':
         kwargs['in_channels'] = in_channels
     return {
         'CReLU':   CReLU,
-        'modReLU': ModReLU,
+        'ModReLU': ModReLU,
         'ZReLU':   ZReLU
     }[config.activation](**kwargs)
 
 
 def batch_norm(in_channels=None, **kwargs):
     bn = {
+        'RadialNorm':{
         1: RadialBatchNorm1d,
         2: RadialBatchNorm2d,
         3: RadialBatchNorm3d
-    }[config.spatial_dimentions]
+        },
+        'CNorm':{
+        1: CNorm1d,
+        2: CNorm2d,
+        3: CNorm3d
+        },
+    }[config.norm][config.spatial_dimentions]
     return bn(in_channels, t=config.bn_t, **kwargs)
 
 

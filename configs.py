@@ -15,17 +15,18 @@ class Config(object):
 
         # Training configs
         self.learning_rate = 0.001
-        self.models_dir = '/home/ali/ext2/yqwang/Coursework/BME548/Project/Snapshots/042917_RealUNet'
+        self.models_dir = '/home/ali/ext2/yqwang/Coursework/BME548/Project/Snapshots/043013_CUNet'
         self.num_epochs = 50
         self.num_epochs_per_saving = 10
         self.normalize_input = False
 
         # Model configs
-        self.net = "RealUNet"
+        self.net = "CUNet"
         self.unet_global_residual_conn = False
         self.kernel_size = 3
-        self.bias = False
-        self.activation = 'ReLU'
+        self.bias = True
+        self.norm = 'CNorm'
+        self.activation = 'CReLU'
         self.activation_params = {
             'inplace': True,
         }

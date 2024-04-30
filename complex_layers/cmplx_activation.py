@@ -37,7 +37,8 @@ class ModReLU(nn.Module):
     def forward(self, input):
         real, imag = torch.unbind(input, -1)
         mag, phase = convert_cylindrical_to_polar(real, imag)
-        brdcst_b = torch.swapaxes(torch.broadcast_to(self.b, mag.shape), -1, 1)
+        # brdcst_b = torch.swapaxes(torch.broadcast_to(self.b, mag.shape), -1, 1)
+        brdcst_b = torch.broadcast_to(self.b.unsqueeze(0).unsqueeze(2).unsqueeze(3), mag.shape)
         mag = self.relu(mag + brdcst_b)
         real, imag = convert_polar_to_cylindrical(mag, phase)
         output = torch.stack((real, imag), dim=-1)
@@ -53,7 +54,7 @@ class ZReLU(nn.Module):
         mag, phase = convert_cylindrical_to_polar(real, imag)
 
         phase = torch.stack([phase, phase], dim=-1)
-        output = torch.where(phase >= 0.0, input, torch.tensor(0.0).to(input.device))
-        output = torch.where(phase <= np.pi / 2, output, torch.tensor(0.0).to(input.device))
+        output = torch.where(phase > 0.0, input, torch.tensor(0.0).to(input.device))
+        output = torch.where(phase < np.pi / 2, output, torch.tensor(0.0).to(input.device))
 
         return output

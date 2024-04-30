@@ -217,3 +217,203 @@ class RadialBatchNorm3d(RadialNorm):
             track_running_stats=track_running_stats,
             polar=polar
         )
+
+
+
+class CNorm(nn.Module):
+
+    def __init__(
+        self,
+        rank,
+        num_features,
+        eps=1e-5,
+        momentum=0.1,
+        affine=True,
+        track_running_stats=True,
+        polar=False
+    ):
+        """Complex Batch Normalization
+
+        Parameters
+        ----------
+        rank : int
+            The spatial dimension of the input tensor.
+        num_features : int
+            The number of features of the input tensor.
+        t : float
+            The threshold for the normalization.
+        eps : float
+            The epsilon for the normalization.
+        momentum : float
+            The momentum for the normalization.
+        affine : bool
+            If True, this module has learnable affine parameters.
+        track_running_stats : bool
+            If True, this module tracks the running mean and variance,
+            and during training time uses the running mean and variance to normalize.
+            During testing time, this module uses the mean and variance of the
+            input statistics to normalize.
+        polar : bool
+            If True, the input is in the polar form (magnitude and phase).
+            If False, the input is in the cylindrical form (real and imag).
+        """
+        super(CNorm, self).__init__()
+        self.rank = rank
+        self.num_features = num_features
+        self.eps = eps
+        self.momentum = momentum
+        self.affine = affine
+        self.track_running_stats = track_running_stats
+        self.polar = polar
+
+        bns = {
+            1: nn.BatchNorm1d,
+            2: nn.BatchNorm2d,
+            3: nn.BatchNorm3d
+        }
+        self.bn_func = bns[self.rank](
+            num_features=num_features,
+            eps=eps,
+            momentum=momentum,
+            affine=affine,
+            track_running_stats=track_running_stats
+        )
+
+    def forward(self, input):
+        real, imag = torch.unbind(input, -1)
+
+        norm_real = self.bn_func(real)
+        norm_imag = self.bn_func(imag)
+        
+        output = torch.stack((norm_real, norm_imag), dim=-1)
+
+        return output
+
+
+class CNorm1d(CNorm):
+    r"""Applies Radial Batch Normalization over a 2D and 3D  input (a mini-batch of 1D
+    complex inputs with optional additional channel dimension)
+
+    Parameters
+    ----------
+    num_features: :math:`C` from an expected input of size
+        :math:`(N, C, L)` or :math:`L` from input of size :math:`(N, L)`
+    eps: a value added to the denominator for numerical stability.
+        Default: 1e-5
+    momentum: the value used for the running_mean and running_var
+        computation. Can be set to ``None`` for cumulative moving average
+        (i.e. simple average). Default: 0.1
+    affine: a boolean value that when set to ``True``, this module has
+        learnable affine parameters. Default: ``True``
+    track_running_stats: a boolean value that when set to ``True``, this
+        module tracks the running mean and variance, and when set to ``False``,
+        this module does not track such statistics and always uses batch
+        statistics in both training and eval modes. Default: ``True``
+
+    Shape:
+        - Input: :math:`(N, C)` or :math:`(N, C, L, 2)`
+        - Output: :math:`(N, C)` or :math:`(N, C, L, 2)` (same shape as input)
+    """
+    def __init__(self,
+                 num_features,
+                 eps=1e-5,
+                 momentum=0.1,
+                 t=5,
+                 affine=True,
+                 track_running_stats=True,
+                 polar=False):
+        super(CNorm1d, self).__init__(
+            rank=1,
+            num_features=num_features,
+            eps=eps,
+            momentum=momentum,
+            affine=affine,
+            track_running_stats=track_running_stats,
+            polar=polar
+        )
+
+
+class CNorm2d(CNorm):
+    r"""Applies Radial Batch Normalization over a 2D and 3D  input (a mini-batch of 1D
+    complex inputs with optional additional channel dimension)
+
+    Parameters
+    ----------
+    num_features: :math:`C` from an expected input of size
+        :math:`(N, C, L)` or :math:`L` from input of size :math:`(N, L)`
+    eps: a value added to the denominator for numerical stability.
+        Default: 1e-5
+    momentum: the value used for the running_mean and running_var
+        computation. Can be set to ``None`` for cumulative moving average
+        (i.e. simple average). Default: 0.1
+    affine: a boolean value that when set to ``True``, this module has
+        learnable affine parameters. Default: ``True``
+    track_running_stats: a boolean value that when set to ``True``, this
+        module tracks the running mean and variance, and when set to ``False``,
+        this module does not track such statistics and always uses batch
+        statistics in both training and eval modes. Default: ``True``
+
+    Shape:
+        - Input: :math:`(N, C)` or :math:`(N, C, L, 2)`
+        - Output: :math:`(N, C)` or :math:`(N, C, L, 2)` (same shape as input)
+    """
+    def __init__(self,
+                 num_features,
+                 eps=1e-5,
+                 momentum=0.1,
+                 t=5,
+                 affine=True,
+                 track_running_stats=True,
+                 polar=False):
+        super(CNorm2d, self).__init__(
+            rank=2,
+            num_features=num_features,
+            eps=eps,
+            momentum=momentum,
+            affine=affine,
+            track_running_stats=track_running_stats,
+            polar=polar
+        )
+
+
+class CNorm3d(CNorm):
+    r"""Applies Complex Batch Normalization over a 2D and 3D  input (a mini-batch of 1D
+    complex inputs with optional additional channel dimension)
+
+    Parameters
+    ----------
+    num_features: :math:`C` from an expected input of size
+        :math:`(N, C, L)` or :math:`L` from input of size :math:`(N, L)`
+    eps: a value added to the denominator for numerical stability.
+        Default: 1e-5
+    momentum: the value used for the running_mean and running_var
+        computation. Can be set to ``None`` for cumulative moving average
+        (i.e. simple average). Default: 0.1
+    affine: a boolean value that when set to ``True``, this module has
+        learnable affine parameters. Default: ``True``
+    track_running_stats: a boolean value that when set to ``True``, this
+        module tracks the running mean and variance, and when set to ``False``,
+        this module does not track such statistics and always uses batch
+        statistics in both training and eval modes. Default: ``True``
+
+    Shape:
+        - Input: :math:`(N, C)` or :math:`(N, C, L, 2)`
+        - Output: :math:`(N, C)` or :math:`(N, C, L, 2)` (same shape as input)
+    """
+    def __init__(self,
+                 num_features,
+                 eps=1e-5,
+                 momentum=0.1,
+                 t=5,
+                 affine=True,
+                 track_running_stats=True,
+                 polar=False):
+        super(CNorm3d, self).__init__(
+            rank=3,
+            num_features=num_features,
+            eps=eps,
+            momentum=momentum,
+            affine=affine,
+            track_running_stats=track_running_stats,
+            polar=polar
+        )
