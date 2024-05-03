@@ -6,9 +6,11 @@ import torch
 from torchvision import transforms
 import fastmri
 from fastmri.data import transforms as T
+from fastmri.data.subsample import RandomMaskFunc
 from configs import config
 import os
 import logging
+import scipy
 
 
 def center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
@@ -126,12 +128,38 @@ class DenoisingDataset(Dataset):
 
         kspace2 = T.to_tensor(kspace)      # Convert from numpy array to pytorch tensor
         image = fastmri.ifft2c(kspace2)
-        # image = interpolate(image, size=self.img_size, mode='bilinear', align_corners=True)
         image_crop = center_crop(image, shape=self.img_size)
-        image_crop = torch.unsqueeze(image_crop / torch.max(fastmri.complex_abs(image_crop)), 0)
-        noise = torch.randn_like(image_crop) * 0.1 + 0
-        x = image_crop + noise
-        y = image_crop
+
+        if config.method == "RicianNoise":
+            image_crop = torch.unsqueeze(image_crop / torch.max(fastmri.complex_abs(image_crop)), 0)
+            noise = torch.randn_like(image_crop) * 0.1 + 0
+            x = image_crop + noise
+            y = image_crop
+        
+        if config.method == "MotionBlur":
+            image_crop = image_crop/torch.max(fastmri.complex_abs(image_crop))
+            image_crop_np = image_crop.numpy()
+
+            img_list = []
+            angle_list = [-3, 0, 3]
+            for angle in angle_list:
+                rotated_image = scipy.ndimage.rotate(image_crop_np, angle=angle, axes=(1, 0), reshape=False, mode='constant', cval=0.0)
+                img_list.append(rotated_image)
+            out_image = np.mean(np.stack(img_list, axis=0), axis=0)
+            out_image = T.to_tensor(out_image)
+            x = torch.unsqueeze(out_image,0)
+            y = torch.unsqueeze(image_crop,0)
+        
+
+        if config.method == "Acceleration":
+            image_crop = torch.unsqueeze(image_crop / torch.max(fastmri.complex_abs(image_crop)), 0)
+            mask_func = RandomMaskFunc(center_fractions=[0.04], accelerations=[6])  # Create the mask function object
+            masked_kspace, mask, _ = T.apply_mask(kspace2, mask_func)  # Apply the mask to k-space
+            image2 = fastmri.ifft2c(masked_kspace)
+            image_crop2 = center_crop(image2, shape=self.img_size)
+            image_crop2 = torch.unsqueeze(image_crop2 / torch.max(fastmri.complex_abs(image_crop2)), 0)
+            x = image_crop2
+            y = image_crop
 
         return (x, y, name)
         

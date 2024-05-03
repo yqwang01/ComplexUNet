@@ -12,10 +12,11 @@ class Config(object):
         self.data_dir = "/home/ali/ext2/yqwang/Coursework/BME548/Project/Dataset/singlecoil_val_npz"
         self.cut_ratio_1 = 0.8
         self.cut_ratio_2 = 1
+        self.method = "RicianNoise"  # RicianNoise, MotionBlur, Acceleration
 
         # Training configs
         self.learning_rate = 0.001
-        self.models_dir = '/home/ali/ext2/yqwang/Coursework/BME548/Project/Snapshots/043013_CUNet'
+        self.models_dir = '/home/ali/ext2/yqwang/Coursework/BME548/Project/Snapshots/050200_CUnet'
         self.num_epochs = 50
         self.num_epochs_per_saving = 10
         self.normalize_input = False
@@ -25,8 +26,8 @@ class Config(object):
         self.unet_global_residual_conn = False
         self.kernel_size = 3
         self.bias = True
-        self.norm = 'CNorm'
-        self.activation = 'CReLU'
+        self.norm = 'RadialNorm' # RadialNorm, CNorm
+        self.activation = 'CReLU' # CReLU, ModReLU, ZReLU
         self.activation_params = {
             'inplace': True,
         }
